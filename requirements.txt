@@ -1,0 +1,4 @@
+django
+huggingface_hub
+django-environ
+gunicorn
