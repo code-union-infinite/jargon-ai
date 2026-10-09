@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Jargon – Understand anything</title>
+
+<style>
+    :root {
+        --bg: #0f1115;
+        --card: #1a1d24;
+        --text: #e8eaed;
+        --muted: #9aa0a6;
+        --accent: #7c9cff;
+        --success: #34d399;
+        --partial: #fbbf24;
+        --wrong: #f87171;
+        --border: #2d323c;
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        min-height: 100vh;
+        padding: 2rem 1rem;
+    }
+
+    .container {
+        max-width: 640px;
+        margin: 0 auto;
+    }
+
+    header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    h1 {
+        font-size: 2.4rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.3rem;
+    }
+
+    .tagline {
+        color: var(--muted);
+        font-size: 1.05rem;
+    }
+
+    /* Start form */
+    .start-form {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .start-form input[type="text"] {
+        flex: 1;
+        padding: 0.85rem 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--card);
+        color: var(--text);
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+
+    .start-form input:focus {
+        border-color: var(--accent);
+    }
+
+    button {
+        padding: 0.85rem 1.4rem;
+        background: var(--accent);
+        color: #0f1115;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: opacity 0.15s;
+        white-space: nowrap;
+    }
+
+    button:hover {
+        opacity: 0.9;
+    }
+
+    .error {
+        background: rgba(248, 113, 113, 0.12);
+        color: var(--wrong);
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+    }
+
+    /* Lesson card */
+    .lesson {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.6rem;
+        margin-top: 0.5rem;
+    }
+
+    .concept-title {
+        font-size: 1.35rem;
+        font-weight: 600;
+        margin-bottom: 1.2rem;
+        color: var(--accent);
+    }
+
+    .student-answer {
+        background: rgba(255,255,255,0.04);
+        border-left: 3px solid var(--muted);
+        padding: 0.7rem 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.95rem;
+    }
+
+    .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 1.2rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+    }
+
+    .status.understood {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--success);
+    }
+
+    .status.partial {
+        background: rgba(251, 191, 36, 0.15);
+        color: var(--partial);
+    }
+
+    .status.not {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--wrong);
+    }
+
+    .section-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-bottom: 0.4rem;
+    }
+
+    .explanation {
+        margin-bottom: 1.6rem;
+        white-space: pre-wrap;
+    }
+
+    .question-box {
+        border-top: 1px solid var(--border);
+        padding-top: 1.4rem;
+    }
+
+    .answer-form {
+        display: flex;
+        gap: 0.6rem;
+        margin-top: 1rem;
+    }
+
+    .answer-form input[type="text"] {
+        flex: 1;
+        padding: 0.8rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 1rem;
+        outline: none;
+    }
+
+    .answer-form input:focus {
+        border-color: var(--accent);
+    }
+
+    .no-question {
+        color: var(--muted);
+        font-style: italic;
+        margin-top: 1rem;
+    }
+
+    .new-topic {
+        display: block;
+        text-align: center;
+        margin-top: 1.8rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .new-topic a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .new-topic a:hover {
+        text-decoration: underline;
+    }
+</style>
+```
+
+</head>
+
+<body>
+
+
+<div class="container">
+
+    <header>
+        <h1>Jargon</h1>
+        <p class="tagline">Understand anything. Actually.</p>
+    </header>
+
+    <!-- Start / new concept form -->
+    <form method="POST" class="start-form">
+
+        {% csrf_token %}
+
+        <input
+            type="text"
+            name="concept"
+            placeholder="What don’t you understand?"
+            required
+            autofocus
+            {% if lesson %}value=""{% endif %}
+        >
+
+        <button type="submit">Explain it</button>
+
+    </form>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if lesson %}
+
+        <div class="lesson">
+
+            <div class="concept-title">
+                {{ lesson.concept }}
+            </div>
+
+            {% if lesson.student_answer %}
+
+                <div class="student-answer">
+                    <strong>You said:</strong>
+                    {{ lesson.student_answer }}
+                </div>
+
+                {% if lesson.status == "UNDERSTOOD" %}
+
+                    <div class="status understood">
+                        ✅ You got it
+                    </div>
+
+                {% elif lesson.status == "PARTIAL" %}
+
+                    <div class="status partial">
+                        🟡 Almost there
+                    </div>
+
+                {% elif lesson.status == "NOT_UNDERSTOOD" %}
+
+                    <div class="status not">
+                        🔴 Not quite — let’s look again
+                    </div>
+
+                {% endif %}
+
+            {% endif %}
+
+            <div class="section-label">
+                Jargon explains
+            </div>
+
+            <div class="explanation">
+                {{ lesson.explanation|linebreaksbr }}
+            </div>
+
+
+            <!-- QUESTION / FINISHED STATE -->
+
+            {% if lesson.question and not lesson.finished %}
+
+                <div class="question-box">
+
+                    <div class="section-label">
+                        Your turn
+                    </div>
+
+                    <p>{{ lesson.question }}</p>
+
+                    <form method="POST" class="answer-form">
+
+                        {% csrf_token %}
+
+                        <input
+                            type="hidden"
+                            name="answering"
+                            value="true"
+                        >
+
+                        <input
+                            type="text"
+                            name="student_answer"
+                            placeholder="Type your answer…"
+                            required
+                            autofocus
+                        >
+
+                        <button type="submit">
+                            Check
+                        </button>
+
+                    </form>
+
+                </div>
+
+            {% elif lesson.finished %}
+
+                <p style="margin-top:1.5rem; color: var(--muted);">
+                    You’ve reached the end of this topic.
+                    Type a new concept above to keep learning.
+                </p>
+
+            {% else %}
+
+                <p class="no-question">
+                    Jargon didn’t ask a question this time.
+                    Try a new concept above.
+                </p>
+
+            {% endif %}
+
+        </div>
+
+        <p class="new-topic">
+            Want a different topic?
+            Just type it above and hit Explain.
+        </p>
+
+    {% endif %}
+
+</div>
+
+
+</body>
+
+</html>
+
