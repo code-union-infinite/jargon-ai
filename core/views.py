@@ -255,7 +255,7 @@ def home(request):
         except Exception as e:
             print("AI error:", type(e).__name__, e)
             request.session["error"] = (
-                "Jargon couldn’t reach the AI right now. Please try again in a moment."
+                print("JARGON AI ERROR:", repr(e), flush=True)
             )
         return redirect(request.path)
 
