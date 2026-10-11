@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-jbaa7ak2rzgmi+*^o6d^3y%r!5e2-@dx%$+w2c9kj$8utm+y)w
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["jargon-ai.onrender.com", "localhost", "127.0.0.1"]
 
 
 # Application definition
