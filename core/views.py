@@ -252,11 +252,12 @@ def home(request):
                 else:
                     request.session["lesson"] = start_lesson(concept)
                     request.session.pop("error", None)
+        
         except Exception as e:
-            print("AI error:", type(e).__name__, e)
-            request.session["error"] = (
-                print("JARGON AI ERROR:", repr(e), flush=True)
-            )
+           print("JARGON AI ERROR:", repr(e), flush=True)
+           request.session["error"] = f"AI error: {type(e).__name__}: {e}"
+           print("JARGON LESSON CREATED:", request.session["lesson"], flush=True)
+
         return redirect(request.path)
 
     return render(
