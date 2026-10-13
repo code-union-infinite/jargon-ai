@@ -256,7 +256,7 @@ def home(request):
         except Exception as e:
            print("JARGON AI ERROR:", repr(e), flush=True)
            request.session["error"] = f"AI error: {type(e).__name__}: {e}"
-           print("JARGON LESSON CREATED:", request.session["lesson"], flush=True)
+           print("JARGON LESSON CREATED:", request.session.get("lesson"), flush=True)
 
         return redirect(request.path)
 
