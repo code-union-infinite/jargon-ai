@@ -2,6 +2,7 @@ import re
 from django.conf import settings
 from django.shortcuts import redirect, render
 from huggingface_hub import InferenceClient
+from typing import Tuple
 
 client = InferenceClient(
     token=settings.HF_TOKEN,
@@ -56,7 +57,7 @@ Judge meaning, not exact wording. Short answers are fine if the idea is right.""
 # ---------------------------------------------------------------
 # HELPERS
 # ---------------------------------------------------------------
-def is_valid_concept(concept: str) -> tuple[bool, str]:
+def is_valid_concept(concept: str) -> Tuple[bool, str]:
     """
     Reject empty, too long, or pure-gibberish concepts.
     Returns (is_valid, error_message)
