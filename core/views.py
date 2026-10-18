@@ -9,8 +9,7 @@ from google.genai import types
 
 # Gemini client: set GEMINI_API_KEY in Render's Environment settings.
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
-MODEL_NAME = "gemini-2.5-flash"
-
+MODEL_NAME = "gemini-3.8-flash"
 
 TEACH_PROMPT = """You are Jargon, a friendly and patient teacher for students aged 12-18.
 
