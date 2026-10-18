@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
 
-HF_TOKEN = env("HF_TOKEN")
+GEMINI_API_KEY = env("GEMINI_API_KEY")
 
 
 # Quick-start development settings - unsuitable for production

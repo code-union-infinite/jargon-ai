@@ -1,35 +1,27 @@
 import re
-from django.conf import settings
-from django.shortcuts import redirect, render
-from huggingface_hub import InferenceClient
 from typing import Tuple
 
-client = InferenceClient(
-    token=settings.HF_TOKEN,
-    provider="novita",
-)
+from django.conf import settings
+from django.shortcuts import redirect, render
+from google import genai
+from google.genai import types
 
-# Primary + fallback models
-PRIMARY_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-FALLBACK_MODEL = "meta-llama/Llama-3.1-8B-Instruct"   # change this if you find a better backup
 
-# ---------------------------------------------------------------
-# PROMPTS (tightened)
-# ---------------------------------------------------------------
+# Gemini client: set GEMINI_API_KEY in Render's Environment settings.
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
+MODEL_NAME = "gemini-2.5-flash"
+
+
 TEACH_PROMPT = """You are Jargon, a friendly and patient teacher for students aged 12-18.
 
 When given a concept, reply in EXACTLY this format and nothing else:
 
-EXPLANATION: <3-5 simple sentences. One everyday analogy. No jargon without explaining it.>
+EXPLANATION: <3-5 simple sentences. Include one everyday analogy. Explain any necessary jargon.>
 QUESTION: <ONE clear thinking question that has a short correct answer>
 EXPECTED_ANSWER: <the short correct answer, 1-2 sentences max>
 
-Example for concept "gravity":
-EXPLANATION: Gravity is a force that pulls objects toward each other. Bigger objects pull harder. Earth is huge, so it pulls everything toward its center. That’s why a dropped ball falls down instead of floating.
-QUESTION: If you drop a pen on the Moon, will it fall? Why or why not?
-EXPECTED_ANSWER: Yes, it falls. The Moon has gravity too, just weaker than Earth’s.
+Never add greetings or markdown outside the three labels."""
 
-Never add extra text, greetings, or markdown outside the three labels."""
 
 CHECK_PROMPT = """You are Jargon, a friendly and patient teacher for students aged 12-18.
 You are checking one student answer.
@@ -37,31 +29,23 @@ You are checking one student answer.
 Reply in EXACTLY this format and nothing else:
 
 STATUS: <UNDERSTOOD or PARTIAL or NOT_UNDERSTOOD>
-EXPLANATION: <2-4 sentences following the rules below>
+EXPLANATION: <2-4 sentences>
 QUESTION: <ONE new question that has not been asked before>
 EXPECTED_ANSWER: <short correct answer to the new question>
 
-Rules for STATUS and EXPLANATION:
-- UNDERSTOOD → idea is correct → praise + one new related idea
-- PARTIAL → partially correct → say what is right + teach the missing part
-- NOT_UNDERSTOOD → wrong or confused → kindly re-explain with a different simple example
+Rules:
+- UNDERSTOOD: the idea is correct; praise the student and add one related idea.
+- PARTIAL: say what is right and teach the missing part.
+- NOT_UNDERSTOOD: kindly re-explain using a different simple example.
+- New question for UNDERSTOOD: slightly harder.
+- New question for PARTIAL: focus on the missing part.
+- New question for NOT_UNDERSTOOD: easier version of the same idea.
+- Never repeat a question in the "Questions already asked" list.
+- Judge meaning, not exact wording. Short answers are fine if the idea is right."""
 
-Rules for the new QUESTION:
-- UNDERSTOOD → slightly harder
-- PARTIAL → focus on the missing part
-- NOT_UNDERSTOOD → easier version of the same idea
-Never repeat any question from the "Questions already asked" list.
 
-Judge meaning, not exact wording. Short answers are fine if the idea is right."""
-
-# ---------------------------------------------------------------
-# HELPERS
-# ---------------------------------------------------------------
 def is_valid_concept(concept: str) -> Tuple[bool, str]:
-    """
-    Reject empty, too long, or pure-gibberish concepts.
-    Returns (is_valid, error_message)
-    """
+    """Reject empty, overly long, or obviously invalid concepts."""
     concept = concept.strip()
 
     if not concept:
@@ -70,16 +54,13 @@ def is_valid_concept(concept: str) -> Tuple[bool, str]:
     if len(concept) > 120:
         return False, "That’s too long. Try a shorter concept (under 120 characters)."
 
-    # Must contain at least one real letter (a-z / A-Z)
     if not re.search(r"[a-zA-Z]", concept):
         return False, "Please type a real concept (letters required)."
 
-    # Reject pure keyboard smash / repeated characters
     if re.fullmatch(r"(.)\1{4,}", concept.replace(" ", "")):
         return False, "That doesn’t look like a real concept. Try again."
 
-    # Reject mostly non-letter characters
-    letters = sum(1 for c in concept if c.isalpha())
+    letters = sum(1 for char in concept if char.isalpha())
     if letters / max(len(concept), 1) < 0.4:
         return False, "Please type a clearer concept."
 
@@ -87,52 +68,61 @@ def is_valid_concept(concept: str) -> Tuple[bool, str]:
 
 
 def ask_ai(messages, temperature=0.4, model=None):
-    """Try primary model, fall back to secondary if it fails."""
-    models_to_try = [model or PRIMARY_MODEL, FALLBACK_MODEL]
-    last_error = None
+    """Send the existing chat messages to Gemini and return its text."""
+    system_instruction = ""
+    contents = []
 
-    for m in models_to_try:
-        try:
-            response = client.chat_completion(
-                messages=messages,
-                model=m,
-                max_tokens=700,
-                temperature=temperature,
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            last_error = e
-            print(f"Model {m} failed: {e}")
-            continue
+    for message in messages:
+        role = message.get("role")
+        text = message.get("content", "")
+        if role == "system":
+            system_instruction = text
+        elif role == "assistant":
+            contents.append({"role": "model", "parts": [{"text": text}]})
+        elif role == "user":
+            contents.append({"role": "user", "parts": [{"text": text}]})
 
-    # Both failed
-    raise last_error
+    response = client.models.generate_content(
+        model=model or MODEL_NAME,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction or None,
+            temperature=temperature,
+            max_output_tokens=700,
+        ),
+    )
+
+    result = (response.text or "").strip()
+    if not result:
+        raise RuntimeError("Gemini returned an empty response. Please try again.")
+    return result
 
 
 def parse_sections(text, labels):
-    pattern = r"\*{0,2}\b(" + "|".join(labels) + r")\b\*{0,2}\s*:\s*\*{0,2}"
-    parts = re.split(pattern, text, flags=re.IGNORECASE)
+    """Extract labeled sections without confusing one label for another."""
+    pattern = r"(?im)^\s*\**(" + "|".join(re.escape(label) for label in labels) + r")\**\s*:\s*\**"
+    matches = list(re.finditer(pattern, text or ""))
     sections = {}
-    for i in range(1, len(parts) - 1, 2):
-        key = parts[i].upper()
-        value = parts[i + 1].strip()
-        # Prevent sections from bleeding into each other
-        for next_label in labels:
-            if next_label.upper() != key and next_label.upper() in value.upper():
-                value = value.split(next_label, 1)[0].strip()
-                break
-        sections[key] = value
+
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        sections[match.group(1).upper()] = text[start:end].strip().strip("*").strip()
+
     return sections
 
 
 def ask_structured(messages, labels, required, temperature):
+    """Retry once if Gemini misses required labels."""
     reply = ""
     parts = {}
+
     for _ in range(2):
-        reply = ask_ai(messages, temperature)
+        reply = ask_ai(messages, temperature=temperature)
         parts = parse_sections(reply, labels)
         if all(parts.get(name) for name in required):
             return parts
+
     if not parts.get("EXPLANATION"):
         parts["EXPLANATION"] = reply.strip()
     return parts
@@ -146,10 +136,7 @@ def clean_status(text):
     return "PARTIAL"
 
 
-# ---------------------------------------------------------------
-# CORE LOGIC
-# ---------------------------------------------------------------
-MAX_TURNS = 7   # after this many questions we gently stop
+MAX_TURNS = 7
 
 
 def start_lesson(concept):
@@ -163,12 +150,13 @@ def start_lesson(concept):
         required=["EXPLANATION", "QUESTION", "EXPECTED_ANSWER"],
         temperature=0.5,
     )
+
     question = parts.get("QUESTION", "")
     return {
         "concept": concept,
         "explanation": parts.get("EXPLANATION", ""),
         "question": question,
-        "expected": parts.get("EXPECTED_ANSWER", ""),  # never sent to template
+        "expected": parts.get("EXPECTED_ANSWER", ""),
         "status": "",
         "student_answer": "",
         "asked": [question] if question else [],
@@ -178,7 +166,6 @@ def start_lesson(concept):
 
 
 def check_answer(lesson, student_answer):
-    # Max turns guard
     if lesson.get("turn_count", 1) >= MAX_TURNS:
         new_lesson = dict(lesson)
         new_lesson.update({
@@ -186,7 +173,7 @@ def check_answer(lesson, student_answer):
             "status": "UNDERSTOOD",
             "explanation": (
                 "You’ve been working hard on this topic — nice effort! "
-                "You’ve got a solid start. Want to try a completely new concept?"
+                "You’ve made progress. Want to try a completely new concept?"
             ),
             "question": "",
             "expected": "",
@@ -194,7 +181,7 @@ def check_answer(lesson, student_answer):
         })
         return new_lesson
 
-    asked_text = "\n".join(f"- {q}" for q in lesson.get("asked", []))
+    asked_text = "\n".join(f"- {question}" for question in lesson.get("asked", []))
     messages = [
         {"role": "system", "content": CHECK_PROMPT},
         {
@@ -208,6 +195,7 @@ def check_answer(lesson, student_answer):
             ),
         },
     ]
+
     parts = ask_structured(
         messages,
         labels=["STATUS", "EXPLANATION", "QUESTION", "EXPECTED_ANSWER"],
@@ -226,7 +214,7 @@ def check_answer(lesson, student_answer):
         "status": clean_status(parts.get("STATUS", "")),
         "explanation": parts.get("EXPLANATION", ""),
         "question": question,
-        "expected": parts.get("EXPECTED_ANSWER", ""),  # stays only in session
+        "expected": parts.get("EXPECTED_ANSWER", ""),
         "asked": asked,
         "turn_count": lesson.get("turn_count", 1) + 1,
         "finished": False,
@@ -234,30 +222,30 @@ def check_answer(lesson, student_answer):
     return new_lesson
 
 
-# ---------------------------------------------------------------
-# VIEW
-# ---------------------------------------------------------------
 def home(request):
     if request.method == "POST":
         try:
             if request.POST.get("answering") == "true":
                 lesson = request.session.get("lesson")
                 student_answer = request.POST.get("student_answer", "").strip()
+
                 if lesson and student_answer and not lesson.get("finished"):
                     request.session["lesson"] = check_answer(lesson, student_answer)
             else:
                 concept = request.POST.get("concept", "").strip()
                 valid, error_msg = is_valid_concept(concept)
+
                 if not valid:
                     request.session["error"] = error_msg
                 else:
                     request.session["lesson"] = start_lesson(concept)
                     request.session.pop("error", None)
-        
-        except Exception as e:
-           print("JARGON AI ERROR:", repr(e), flush=True)
-           request.session["error"] = f"AI error: {type(e).__name__}: {e}"
-           print("JARGON LESSON CREATED:", request.session.get("lesson"), flush=True)
+
+        except Exception as error:
+            print("JARGON AI ERROR:", repr(error), flush=True)
+            request.session["error"] = (
+                f"AI error: {type(error).__name__}: {error}"
+            )
 
         return redirect(request.path)
 

@@ -1,5 +1,5 @@
 django
-huggingface_hub
+google-genai
 django-environ
 gunicorn
 django-environ
