@@ -67,13 +67,19 @@ def is_valid_concept(concept: str) -> Tuple[bool, str]:
 
 
 def ask_ai(messages, temperature=0.4, model=None):
-    """Send the existing chat messages to Gemini and return its text."""
+    """Send messages to Gemini with a timeout and useful error handling."""
+    import logging
+    from google.genai import types
+
+    logger = logging.getLogger(__name__)
+
     system_instruction = ""
     contents = []
 
     for message in messages:
         role = message.get("role")
         text = message.get("content", "")
+
         if role == "system":
             system_instruction = text
         elif role == "assistant":
@@ -81,20 +87,29 @@ def ask_ai(messages, temperature=0.4, model=None):
         elif role == "user":
             contents.append({"role": "user", "parts": [{"text": text}]})
 
-    response = client.models.generate_content(
-        model=model or MODEL_NAME,
-        contents=contents,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction or None,
-            temperature=temperature,
-            max_output_tokens=700,
-        ),
-    )
+    try:
+        response = client.models.generate_content(
+            model=model or MODEL_NAME,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction or None,
+                temperature=temperature,
+                max_output_tokens=700,
+            ),
+        )
 
-    result = (response.text or "").strip()
-    if not result:
-        raise RuntimeError("Gemini returned an empty response. Please try again.")
-    return result
+        result = (response.text or "").strip()
+
+        if not result:
+            raise RuntimeError("Gemini returned an empty response.")
+
+        return result
+
+    except Exception as exc:
+        logger.exception("Gemini request failed: %s", exc)
+        raise RuntimeError(
+            "Jargon's AI is temporarily unavailable. Please try again."
+        ) from exc
 
 
 def parse_sections(text, labels):
