@@ -8,7 +8,17 @@ from google.genai import types
 
 
 # Gemini client: set GEMINI_API_KEY in Render's Environment settings.
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
+from google import genai
+from google.genai import types
+
+client = genai.Client(
+    api_key=settings.GEMINI_API_KEY,
+    http_options=types.HttpOptions(
+        timeout=45000  # 45 seconds
+    ),
+)
+
 MODEL_NAME = "gemini-3.8-flash"
 
 TEACH_PROMPT = """You are Jargon, a friendly and patient teacher for students aged 12-18.
